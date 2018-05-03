@@ -1,5 +1,5 @@
 
-var config = require('../config/configLocal.js');
+var config = require('../config/configLocal');
 var environment = process.argv[2];
 
 var MongoClient = require('mongodb').MongoClient

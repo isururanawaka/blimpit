@@ -1,5 +1,5 @@
-var mongoAdapter = require('../dbadapters/mongoAdapter');
-var config = require('../config/configLocal.js');
+var mongoAdapter = require('../dbconnector/mongoAdapter');
+var config = require('../config/config.js');
 exports.addProducts = function (req, res) {
     var product = req.body.product;
     if (product) {
