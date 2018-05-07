@@ -1,5 +1,4 @@
-// temp user is saved temporarliy untill user clicks the email verification link or expires
-// load the things we need
+// temp user is saved temporarliy untill user clicks the email verification link, phone verification  or expires the link
 var mongoose = require('mongoose');
 var bcrypt   = require('bcrypt-nodejs');
 

@@ -1,5 +1,5 @@
-var user       = require('../../../model/user');
-var tmpUser       = require('../../../model/tempuser');
+var user       = require('../../../model/signinandsignup/user');
+var tmpUser       = require('../../../model/signinandsignup/tempuser');
 
 var config = require('../../../config/config');
 
@@ -36,7 +36,6 @@ exports.localSignUp = function(req, userId, password, done) {
                         return done(null, false, req.flash('signupMessage',
                             'You have already signUp using google, please login via google'));
                     } else {
-                        //TODO: send password to email
                         return done(null, false, req.flash('signupMessage',
                             'You have already signUp using local, please login via local'));
                     }
@@ -54,81 +53,18 @@ exports.localSignUp = function(req, userId, password, done) {
                                 return done(null, false, req.flash('signupMessage',
                                     'Verification email already sent to '+ user_id+ ' Please verify it'));
                             }else {
-                                //TODO; resend new code to phone
-                                return done(null, false, req.flash('signupMessage',
-                                    'Verification code already sent to '+ user_id+ ' Please verify it'));
+                                tmpUser.findOneAndRemove({'user_id': user_id}, function (err, response){
+                                    if(!err){
+                                        saveTempUser(user_id,req,password,done);
+                                    }
+                                });
                             }
-
-
-
 
                         } else{
-
-
-                    var queryId = utils.getRandomQueryId();
-
-                     var newTempUser = new tmpUser();
-                            if(req.body.userIdType==config.user.emailType){
-                                newTempUser.email = user_id;
-                            }else {
-                                newTempUser.phone = user_id;
-                            }
-                    newTempUser.q_id = queryId.toString();
-                    newTempUser.password = newTempUser.generateHash(password);
-                    newTempUser.username = req.body.username;
-                    newTempUser.businessType = req.body.BType;
-                            if(req.body.userIdType==config.user.emailType){
-                                newTempUser.email = user_id;
-                                var link = config.user.verficationlink+"?email="+user_id+"&id="+queryId;
-                                var text = "Hello,<br> Please click on the below link to verify your registation at the BlimpIt." +
-                                    "The link will expire after 24 hours" + "<br><a href="+link+">Click here to verify</a>";
-
-                                emailHandler.sendMail(user_id, config.user.verificationsubject,text, function(err){
-                                    if (err) {
-                                        return done(null, false, req.flash('signupMessage',
-                                            'Cannot send verification email to '+ user_id+ ' Please provide a valid email address'));
-
-                                    } else {
-
-                                        newTempUser.save(function (err) {
-                                            if (err)
-                                                return done(err);
-
-                                            return done(null, newTempUser,req.flash('signupMessage',
-                                                'Verification email sent to '+ user_id));
-                                        });
-
-
-
-
-                                    }
-
-                                });
-                            }else {
-                                var message = 'Your verification code '+ queryId;
-                              smsHandler.sendSMS(config.twilo.phonenumber,user_id,message,function (err,response) {
-                                  if(err){
-                                     done(err);
-                                  }else {
-                                      newTempUser.phone = user_id;
-                                      newTempUser.save(function (err) {
-                                          if (err)
-                                              return done(err);
-
-                                          return done(null, newTempUser,req.flash('signupMessage',
-                                              'Verification code sent to '+ user_id));
-                                      });
-                                  }
-
-                              });
-
-                            }
-
+                            saveTempUser(user_id,req,password,done);
                 }
             });
-
         }
-
         });
         }  else {
 
@@ -178,15 +114,13 @@ if(req.query.email){
                 cb(false, 'Query Id validation failed');
             }
         } else{
-
+            cb(false, 'This is not a valid request');
         }
     });
 }else{
     console.error("Cannot find query id");
 cb(true,"Cannot find query id");
 }
-
-
 }
 
 
@@ -445,3 +379,64 @@ exports.googleSignUp = function(req, token, refreshToken, profile, done) {
 
 
 
+function saveTempUser(user_id,req,password,done) {
+
+    var queryId = utils.getRandomQueryId();
+
+    var newTempUser = new tmpUser();
+    if(req.body.userIdType==config.user.emailType){
+        newTempUser.email = user_id;
+    }else {
+        newTempUser.phone = user_id;
+    }
+    newTempUser.q_id = queryId.toString();
+    newTempUser.password = newTempUser.generateHash(password);
+    newTempUser.username = req.body.username;
+    newTempUser.businessType = req.body.BType;
+    if(req.body.userIdType==config.user.emailType){
+        newTempUser.email = user_id;
+        var link = config.user.verficationlink+"?email="+user_id+"&id="+queryId;
+        var text = "Hello,<br> Please click on the below link to verify your registation at the BlimpIt." +
+            "The link will expire after 24 hours" + "<br><a href="+link+">Click here to verify</a>";
+
+        emailHandler.sendMail(user_id, config.user.verificationsubject,text, function(err){
+            if (err) {
+                return done(null, false, req.flash('signupMessage',
+                    'Cannot send verification email to '+ user_id+ ' Please provide a valid email address'));
+
+            } else {
+
+                newTempUser.save(function (err) {
+                    if (err)
+                        return done(err);
+
+                    return done(null, newTempUser,req.flash('signupMessage',
+                        'Verification email sent to '+ user_id));
+                });
+
+
+
+
+            }
+
+        });
+    }else {
+        var message = 'Your verification code '+ queryId;
+        smsHandler.sendSMS(config.twilo.phonenumber,user_id,message,function (err,response) {
+            if(err){
+                done(err);
+            }else {
+                newTempUser.phone = user_id;
+                newTempUser.save(function (err) {
+                    if (err)
+                        return done(err);
+
+                    return done(null, newTempUser,req.flash('signupMessage',
+                        'Verification code sent to '+ user_id));
+                });
+            }
+
+        });
+
+    }
+}

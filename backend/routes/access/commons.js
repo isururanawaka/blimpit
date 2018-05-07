@@ -1,5 +1,5 @@
-var User       = require('../../model/user');
-var tmpinfo       = require('../../model/tmppassinfo');
+var User       = require('../../model/signinandsignup/user');
+var tmpinfo       = require('../../model/signinandsignup/tmppassinfo');
 var utils      = require('../../utilities/query/utils');
 
 var config = require('../../config/config');

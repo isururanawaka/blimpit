@@ -1,4 +1,5 @@
-// temp user is saved temporarliy untill user clicks the email verification link or expires
+// temporarily saved untill user clicks the email verification link or phone verification
+// for password resetting expires
 // load the things we need
 var mongoose = require('mongoose');
 var bcrypt   = require('bcrypt-nodejs');

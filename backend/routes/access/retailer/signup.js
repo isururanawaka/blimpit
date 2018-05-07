@@ -1,4 +1,4 @@
-var User       = require('../../../model/user');
+var User       = require('../../../model/signinandsignup/user');
 
 
 exports.localSignUp = function(req, email, password, done) {
