@@ -11,8 +11,9 @@ var config = require('./config');
 // load the auth variables
 var configAuth = require('./auth'); // use this one for testing
 
-var privateUser = require('../routes/access/privateuser/signinandsignup');
-var retailer = require('../routes/access/retailer/signinandsignup');
+var privateUserSignUp = require('../routes/access/privateuser/signup');
+var userSignIn = require('../routes/access/commons');
+var retailer = require('../routes/access/retailer/signup');
 
 exports.configureStrategies = function(passport , cb) {
 
@@ -42,35 +43,14 @@ exports.configureStrategies = function(passport , cb) {
     console.log('Registering Local login strategy');
     passport.use('local-login', new LocalStrategy({
         // by default, local strategy uses username and password, we will override with email
-        usernameField : 'email',
+        usernameField : 'userId',
         passwordField : 'password',
         passReqToCallback : true // allows us to pass in the req from our route (lets us check if a user is logged in or not)
-    },
-    function(req, email, password, done) {
-        if (email)
-            email = email.toLowerCase(); // Use lower-case e-mails to avoid case-sensitive e-mail matching
+    },function (req, userId, password, done) {
 
-        // asynchronous
-        process.nextTick(function() {
-            User.findOne({ 'local.email' :  email }, function(err, user) {
-                // if there are any errors, return the error
-                if (err)
-                    return done(err);
-
-                // if no user is found, return the message
-                if (!user)
-                    return done(null, false, req.flash('loginMessage', 'No user found.'));
-
-                if (!user.validPassword(password))
-                    return done(null, false, req.flash('loginMessage', 'Oops! Wrong password.'));
-
-                // all is well, return user
-                else
-                    return done(null, user);
-            });
-        });
-
-    }));
+        userSignIn.localSignIn(req,userId,password,done);
+        }
+    ));
 
     // =========================================================================
     // LOCAL SIGNUP ============================================================
@@ -78,14 +58,14 @@ exports.configureStrategies = function(passport , cb) {
     console.log('Registering  Local sign up strategy');
     passport.use('local-signup', new LocalStrategy({
         // by default, local strategy uses username and password, we will override with email
-            usernameField:'email',
+            usernameField:'userId',
         passwordField : 'password',
         passReqToCallback : true // allows us to pass in the req from our route (lets us check if a user is logged in or not)
-    },function (req,email,password,done) {
+    },function (req,userId,password,done) {
         if(req.body.BType==config.business.private){
-            privateUser.localSignUp(req,email,password,done);
+            privateUserSignUp.localSignUp(req,userId,password,done);
         }else {
-            retailer.localSignUp(req,email,password,done);
+            retailer.localSignUp(req,userId,password,done);
         }
     }));
 
@@ -97,7 +77,7 @@ exports.configureStrategies = function(passport , cb) {
     console.log('Registering  Facebook login strategy');
     passport.use(new FacebookStrategy(fbStrategy,
     function(req, token, refreshToken, profile, done) {
-        privateUser.fbSignUp(req,token,refreshToken,profile,done);
+        privateUserSignUp.fbSignUp(req,token,refreshToken,profile,done);
     }));
 
 
@@ -105,81 +85,81 @@ exports.configureStrategies = function(passport , cb) {
     // =========================================================================
     // TWITTER =================================================================
     // =========================================================================
-    console.log('Registering  Twitter login strategy');
-    passport.use(new TwitterStrategy({
-
-        consumerKey     : configAuth.twitterAuth.consumerKey,
-        consumerSecret  : configAuth.twitterAuth.consumerSecret,
-        callbackURL     : configAuth.twitterAuth.callbackURL,
-        passReqToCallback : true // allows us to pass in the req from our route (lets us check if a user is logged in or not)
-
-    },
-    function(req, token, tokenSecret, profile, done) {
-
-        // asynchronous
-        process.nextTick(function() {
-
-            // check if the user is already logged in
-            if (!req.user) {
-
-                User.findOne({ 'twitter.id' : profile.id }, function(err, user) {
-                    if (err)
-                        return done(err);
-
-                    if (user) {
-                        // if there is a user id already but no token (user was linked at one point and then removed)
-                        if (!user.twitter.token) {
-                            user.twitter.token       = token;
-                            user.twitter.username    = profile.username;
-                            user.twitter.displayName = profile.displayName;
-
-                            user.save(function(err) {
-                                if (err)
-                                    return done(err);
-                                    
-                                return done(null, user);
-                            });
-                        }
-
-                        return done(null, user); // user found, return that user
-                    } else {
-                        // if there is no user, create them
-                        var newUser                 = new User();
-
-                        newUser.twitter.id          = profile.id;
-                        newUser.twitter.token       = token;
-                        newUser.twitter.username    = profile.username;
-                        newUser.twitter.displayName = profile.displayName;
-
-                        newUser.save(function(err) {
-                            if (err)
-                                return done(err);
-                                
-                            return done(null, newUser);
-                        });
-                    }
-                });
-
-            } else {
-                // user already exists and is logged in, we have to link accounts
-                var user                 = req.user; // pull the user out of the session
-
-                user.twitter.id          = profile.id;
-                user.twitter.token       = token;
-                user.twitter.username    = profile.username;
-                user.twitter.displayName = profile.displayName;
-
-                user.save(function(err) {
-                    if (err)
-                        return done(err);
-                        
-                    return done(null, user);
-                });
-            }
-
-        });
-
-    }));
+    // console.log('Registering  Twitter login strategy');
+    // passport.use(new TwitterStrategy({
+    //
+    //     consumerKey     : configAuth.twitterAuth.consumerKey,
+    //     consumerSecret  : configAuth.twitterAuth.consumerSecret,
+    //     callbackURL     : configAuth.twitterAuth.callbackURL,
+    //     passReqToCallback : true // allows us to pass in the req from our route (lets us check if a user is logged in or not)
+    //
+    // },
+    // function(req, token, tokenSecret, profile, done) {
+    //
+    //     // asynchronous
+    //     process.nextTick(function() {
+    //
+    //         // check if the user is already logged in
+    //         if (!req.user) {
+    //
+    //             User.findOne({ 'twitter.id' : profile.id }, function(err, user) {
+    //                 if (err)
+    //                     return done(err);
+    //
+    //                 if (user) {
+    //                     // if there is a user id already but no token (user was linked at one point and then removed)
+    //                     if (!user.twitter.token) {
+    //                         user.twitter.token       = token;
+    //                         user.twitter.username    = profile.username;
+    //                         user.twitter.displayName = profile.displayName;
+    //
+    //                         user.save(function(err) {
+    //                             if (err)
+    //                                 return done(err);
+    //
+    //                             return done(null, user);
+    //                         });
+    //                     }
+    //
+    //                     return done(null, user); // user found, return that user
+    //                 } else {
+    //                     // if there is no user, create them
+    //                     var newUser                 = new User();
+    //
+    //                     newUser.twitter.id          = profile.id;
+    //                     newUser.twitter.token       = token;
+    //                     newUser.twitter.username    = profile.username;
+    //                     newUser.twitter.displayName = profile.displayName;
+    //
+    //                     newUser.save(function(err) {
+    //                         if (err)
+    //                             return done(err);
+    //
+    //                         return done(null, newUser);
+    //                     });
+    //                 }
+    //             });
+    //
+    //         } else {
+    //             // user already exists and is logged in, we have to link accounts
+    //             var user                 = req.user; // pull the user out of the session
+    //
+    //             user.twitter.id          = profile.id;
+    //             user.twitter.token       = token;
+    //             user.twitter.username    = profile.username;
+    //             user.twitter.displayName = profile.displayName;
+    //
+    //             user.save(function(err) {
+    //                 if (err)
+    //                     return done(err);
+    //
+    //                 return done(null, user);
+    //             });
+    //         }
+    //
+    //     });
+    //
+    // }));
 
     // =========================================================================
     // GOOGLE ==================================================================
@@ -194,71 +174,7 @@ exports.configureStrategies = function(passport , cb) {
 
     },
     function(req, token, refreshToken, profile, done) {
-
-        // asynchronous
-        process.nextTick(function() {
-
-            // check if the user is already logged in
-            if (!req.user) {
-
-                User.findOne({ 'google.id' : profile.id }, function(err, user) {
-                    if (err)
-                        return done(err);
-
-                    if (user) {
-
-                        // if there is a user id already but no token (user was linked at one point and then removed)
-                        if (!user.google.token) {
-                            user.google.token = token;
-                            user.google.name  = profile.displayName;
-                            user.google.email = (profile.emails[0].value || '').toLowerCase(); // pull the first email
-
-                            user.save(function(err) {
-                                if (err)
-                                    return done(err);
-                                    
-                                return done(null, user);
-                            });
-                        }
-
-                        return done(null, user);
-                    } else {
-                        var newUser          = new User();
-
-                        newUser.google.id    = profile.id;
-                        newUser.google.token = token;
-                        newUser.google.name  = profile.displayName;
-                        newUser.google.email = (profile.emails[0].value || '').toLowerCase(); // pull the first email
-
-                        newUser.save(function(err) {
-                            if (err)
-                                return done(err);
-                                
-                            return done(null, newUser);
-                        });
-                    }
-                });
-
-            } else {
-                // user already exists and is logged in, we have to link accounts
-                var user               = req.user; // pull the user out of the session
-
-                user.google.id    = profile.id;
-                user.google.token = token;
-                user.google.name  = profile.displayName;
-                user.google.email = (profile.emails[0].value || '').toLowerCase(); // pull the first email
-
-                user.save(function(err) {
-                    if (err)
-                        return done(err);
-                        
-                    return done(null, user);
-                });
-
-            }
-
-        });
-
+   privateUserSignUp.googleSignUp(req,token,refreshToken,profile,done);
     }));
 cb();
 };

@@ -1,4 +1,8 @@
 
+var privateUserSignUp = require('../routes/access/privateuser/signup');
+var commons = require('./access/commons');
+
+
 exports.registerRoutes = function (app, passport, cb) {
 
     app.get('/', function (req,res) {
@@ -42,6 +46,107 @@ exports.registerRoutes = function (app, passport, cb) {
         failureRedirect : '/signup', // redirect back to the signup page if there is an error
         failureFlash : true // allow flash messages
     }));
+
+
+    app.get('/verify', function(req, res) {
+       privateUserSignUp.localEmailSignUpVerification(req,function (err, msg) {
+           if(err){
+               res.writeHead(500, {'Content-Type': 'application/json'});
+               res.write(JSON.stringify({error:  msg}));
+               res.end();
+               return;
+           }else{
+               // res.writeHead(200, {'Content-Type': 'application/json'});
+               // res.write(JSON.stringify({msg:  msg}));
+               // res.end();
+               // return;
+               res.render('login.ejs', { message: req.flash('Successfully validated the user please login') });
+           }
+
+       });
+    });
+
+
+    app.get('/resendpass', function(req, res) {
+        res.render('resendpassword.ejs', { message: req.flash('resendpassword') });
+    });
+
+    app.post('/resendpass', function(req, res) {
+
+   commons.sendPasswordResettingInfo(req,function (err,viaemail,viaphone, msg) {
+       if(err){
+           console.log("Error in sending password resetting link")
+
+       }else if(viaemail){
+
+           res.render('login.ejs', { message: req.flash(msg) });
+       }else if(viaphone){
+           res.render('resetpasswordviaphone.ejs', { message: req.flash('Successfully validated the user') });
+       }
+   })
+    });
+
+    app.post('/ispassresettingallowed', function(req, res) {
+        commons.allowAccessToUpdatePassword(req,function (err,redirect,msg) {
+            if(err){
+                res.writeHead(500, {'Content-Type': 'application/json'});
+                res.write(JSON.stringify({error:  msg}));
+                res.end();
+                return;
+            }else if(redirect){
+                // res.writeHead(200, {'Content-Type': 'application/json'});
+                // res.write(JSON.stringify({msg:  msg}));
+                // res.end();
+                // return;
+                res.render('resetpassword.ejs', { message: req.flash('Successfully validated the user') });
+            } else{
+
+            }
+
+        });
+    });
+
+
+    app.post('/resetpass', function(req, res) {
+        commons.updatePassword(req,function (err) {
+            if(err){
+                res.writeHead(500, {'Content-Type': 'application/json'});
+                res.write(JSON.stringify({error:  msg}));
+                res.end();
+                return;
+            }else {
+                // res.writeHead(200, {'Content-Type': 'application/json'});
+                // res.write(JSON.stringify({msg:  msg}));
+                // res.end();
+                // return;
+                res.render('login.ejs', { message: req.flash('Successfully updated the password') });
+            }
+
+        });
+    });
+
+
+    app.get('/insertphoneverifycode', function(req, res) {
+        res.render('phoneverification.ejs', { message: req.flash('verfiy code') });
+    });
+
+    app.post('/insertphoneverifycode', function(req, res) {
+        privateUserSignUp.localPhoneSignUpVerification(req,function (err) {
+            if(err){
+                res.writeHead(500, {'Content-Type': 'application/json'});
+                res.write(JSON.stringify({error:  msg}));
+                res.end();
+                return;
+            }else {
+                // res.writeHead(200, {'Content-Type': 'application/json'});
+                // res.write(JSON.stringify({msg:  msg}));
+                // res.end();
+                // return;
+                res.render('login.ejs', { message: req.flash('Successfully validated the user') });
+            }
+
+        });
+    });
 
 
     // facebook -------------------------------

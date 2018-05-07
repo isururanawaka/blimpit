@@ -2,6 +2,35 @@ var config = {};
 config.mongodb = {};
 config.blimpit ={};
 config.business={};
+config.user = {};
+
+config.email ={};
+
+config.nexmo={};
+
+config.nexmo.apikey ='';
+config.nexmo.apisecret='';
+
+config.twilo={};
+
+config.twilo.accountsid ='AC7f77c0911ca551959d595209be6ae368';
+config.twilo.authtoken='153af6f3cc43f0e0a3959c94380295c5';
+
+config.twilo.phonenumber = '+18449202942';
+
+config.user.verficationlink = 'http://localhost:8080/verify'
+config.user.verificationsubject = 'Welcome to BlimpIt',
+
+config.user.passwordresetemail = 'http://localhost:8080/ispassresettingallowed'
+
+config.user.passwordresetsubject = 'Reset Your Password',
+
+config.user.emailType = "email";
+config.user.phoneType ='phonenumber';
+
+
+config.email.user = "admin@blimpit.com";
+config.email.pass = "admin@2304";
 
 config.business.private = 'private';
 config.business.retailer = 'retailer';

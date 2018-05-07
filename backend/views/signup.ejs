@@ -5,7 +5,7 @@
     <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css">
     <style>
-        body         { padding-top:80px; }
+        body   { padding-top:80px; }
     </style>
 </head>
 <body>
@@ -24,9 +24,17 @@
             <label>User Name</label>
             <input type="text" class="form-control" name="username">
         </div>
+
+        <div class="form-group" >
+            <label>Email or Phone Number</label>
+            <select name="userIdType" class="form-control" >
+                <option value="email">Email Verification</option>
+                <option value="phonenumber">Phone Verification</option>
+            </select>
+        </div>
         <div class="form-group">
-            <label>Email</label>
-            <input type="text" class="form-control" name="email">
+            <label>Verification Code(Email/Phone Number)</label>
+            <input type="text" class="form-control" name="userId">
         </div>
         <div class="form-group">
             <label>Password</label>
@@ -45,6 +53,8 @@
     <hr>
 
     <p>Already have an account? <a href="/login">Login</a></p>
+    <p>Forgot Password? <a href="/resendpass">resend password</a></p>
+    <p>Verify Phone? <a href="/insertphoneverifycode">Insert Phone Verfication Code</a></p>
     <p>Or go <a href="/">home</a>.</p>
 
 

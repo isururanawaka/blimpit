@@ -1,4 +1,5 @@
 // load the things we need
+//user model for signUP
 var mongoose = require('mongoose');
 var bcrypt   = require('bcrypt-nodejs');
 
@@ -9,7 +10,8 @@ var userSchema = mongoose.Schema({
         username     :String,
         password     :String,
         businessType :String,
-        email        :String
+        email        :String,
+        phone        :String,
     },
     facebook         : {
         id           : String,
