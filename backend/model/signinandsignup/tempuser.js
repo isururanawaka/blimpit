@@ -6,13 +6,15 @@ var bcrypt   = require('bcrypt-nodejs');
 var userSchema = mongoose.Schema({
     username: String,
     password: String,
-    businessType: String,
+    userType: String,
     q_id:  String,
     email: String,
     phone:String,
+    userId:String,
 },{timestamps: true});
 
 userSchema.index({createdAt: 1},{expireAfterSeconds: 86400});
+userSchema.index({userId: 1});
 
 // generating a hash
 userSchema.methods.generateHash = function(password) {

@@ -1,36 +1,38 @@
 var mongodb = require('mongodb');
 var mongoClient = mongodb.MongoClient;
 var config = require('../config/config');
-var dbClient; retryCount =0;
+var boom = require('boom');
+var dbClient;
+retryCount = 0;
 var errorHandler = require('../errorhandler/errorHandler');
 
 //opens a connection to a given DB Server.
 // If connection fails it retries until max count reaches.
-exports.openConnection =  function(cb) {
+exports.openConnection = function (cb) {
     var url = config.mongodb.connectionString;
-    mongoClient.connect(url,function (err, client) {
-        if(err) {
-            console.log('Cannot connect to mongoDB retrying')
+    mongoClient.connect(url, function (err, client) {
+        if (err) {
+            logger.info('Cannot connect to mongoDB retrying')
             retryCount++;
-            if(retryCount <= config.mongodb.maxRetries){
-                setTimeout(function(){
+            if (retryCount <= config.mongodb.maxRetries) {
+                setTimeout(function () {
                     exports.openConnection(cb);
                 }, config.mongodb.connectionTimeout);
 
-            } else{
+            } else {
                 errorHandler.handleError('Maximum retries are exceeded still unable to connect to server, check whether' +
                     ' mongo service up and running and network is alive ', err);
-                cb(true,false);
+                cb(true, false);
             }
 
-        }else{
+        } else {
             dbClient = client;
-            dbClient.on('disconnected',function () {
-                console.log('Mongodb default connection disconnected');
-                cb(false,true);
+            dbClient.on('disconnected', function () {
+                logger.info('Mongodb default connection disconnected');
+                cb(false, true);
             });
-            console.log("Successfully connected to the mongo server using mongodb");
-            cb(false,false);
+            logger.info("Successfully connected to the mongo server using mongodb");
+            cb(false, false);
         }
 
     })
@@ -44,15 +46,15 @@ exports.openConnection =  function(cb) {
  * @param collectionName
  * @param cb callback
  */
-exports.createCollection = function (db, collectionName, cb){
+exports.createCollection = function (db, collectionName, cb) {
     var dbIns = dbClient.db(db);
     dbIns.createCollection(collectionName, function (err, collection) {
-        if(err){
-            errorHandler.handleError('cannot create collection '+ collectionName, err);
+        if (err) {
+            errorHandler.handleError('cannot create collection ' + collectionName, err);
             throw err;
             return;
-        }else{
-            console.debug('Successfully create the collection '+ collection);
+        } else {
+            logger.debug('Successfully create the collection ' + collection);
             cb();
         }
     });
@@ -67,17 +69,13 @@ exports.createCollection = function (db, collectionName, cb){
  * @param document
  * @param cb
  */
-exports.insertDocument = function (db,collection,document,cb){
+exports.insertDocument = function (db, collection, document, cb) {
     var dbIns = dbClient.db(db);
-    dbIns.collection(collection).insertOne(document, function(err, res) {
+    dbIns.collection(collection).insertOne(document, function (err, res) {
         if (err) {
-            errorHandler.handleError('cannot insert into '+collection, err);
-            throw err;
-            return;
-        }else{
-            console.debug('Successfully inserted the document to the collection '+
-                collection + 'in the DB ' + db);
-            cb();
+          return  cb(boom.conflict('cannot insert into ' + collection+ " id may be  duplicated"));
+        } else {
+            cb(null,"Success");
         }
 
     });
@@ -90,16 +88,16 @@ exports.insertDocument = function (db,collection,document,cb){
  * @param documentArray
  * @param cb
  */
-exports.insertMultipleDocuments = function (db,collection,documentArray,cb){
-   var dbo = dbClient.db(db);
-    dbo.collection(collection).insertMany(documentArray, function(err, res) {
+exports.insertMultipleDocuments = function (db, collection, documentArray, cb) {
+    var dbo = dbClient.db(db);
+    dbo.collection(collection).insertMany(documentArray, function (err, res) {
         if (err) {
-            errorHandler.handleError('cannot insert into '+collection, err);
+            errorHandler.handleError('cannot insert into ' + collection, err);
             throw err;
             return;
-        }else{
-            console.debug('Successfully inserted the documents to the collection '+
-                collection + 'in the DB' + db );
+        } else {
+            logger.debug('Successfully inserted the documents to the collection ' +
+                collection + 'in the DB' + db);
             cb();
         }
 
@@ -114,11 +112,11 @@ exports.insertMultipleDocuments = function (db,collection,documentArray,cb){
  */
 exports.selectAll = function (db, collection, cb) {
     var dbo = dbClient.db(db);
-    dbo.collection(collection).find({}).toArray(function(err, result) {
-        if (err){
-            errorHandler.handleError('Error when retreving data from '+
-                collection +'in DB '+db);
-            cb(err,null);
+    dbo.collection(collection).find({}).toArray(function (err, result) {
+        if (err) {
+            errorHandler.handleError('Error when retreving data from ' +
+                collection + 'in DB ' + db);
+            cb(err, null);
         } else {
             cb(null, result);
         }
@@ -134,15 +132,12 @@ exports.selectAll = function (db, collection, cb) {
  * @param includeQuery fields included in the result.
  * @param cb
  */
-exports.selectSpecificDocuments = function (db, collection, query,includeQuery, cb) {
+exports.selectSpecificDocuments = function (db, collection, query, includeQuery, cb) {
     var dbo = dbClient.db(db);
-    dbo.collection(collection).find(query,includeQuery).toArray(function(err, result) {
-        if (err){
-            errorHandler.handleError('Error when retreving data from '+
-                collection +'in DB '+db);
-            cb(err,null);
+    dbo.collection(collection).find(query, includeQuery).toArray(function (err, result) {
+        if (err) {
+            cb(boom.badRequest("Cannot search the database "+err));
         } else {
-            console.log(result);
             cb(null, result);
         }
 
@@ -157,15 +152,15 @@ exports.selectSpecificDocuments = function (db, collection, query,includeQuery, 
  * @param includeQuery fields included in the result.
  * @param cb
  */
-exports.selectSpecificDocuments = function (db, collection, query,includeQuery, count, cb) {
+exports.selectSpecificDocumentsWithLimit = function (db, collection, query, includeQuery, count, cb) {
     var dbo = dbClient.db(db);
-    dbo.collection(collection).find(query,includeQuery).limit(count).toArray(function(err, result) {
-        if (err){
-            errorHandler.handleError('Error when retreving data from '+
-                collection +'in DB '+db);
-            cb(err,null);
+    dbo.collection(collection).find(query, includeQuery).limit(count).toArray(function (err, result) {
+        if (err) {
+            errorHandler.handleError('Error when retreving data from ' +
+                collection + 'in DB ' + db);
+            cb(err, null);
         } else {
-            console.log(result);
+            logger.debug(result);
             cb(null, result);
         }
 
@@ -181,17 +176,17 @@ exports.selectSpecificDocuments = function (db, collection, query,includeQuery, 
  * @param cb
  */
 exports.sortDocuments = function (db, collection, query, sortQuery, cb) {
-  var dbo = dbClient.db(db);
-  dbo.collection(collection).find(query).sort(sortQuery).toArray(function (err, result) {
-      if (err){
-          errorHandler.handleError('Error when retreving data from '+
-              collection +'in DB '+db);
-          cb(err,null);
-      } else {
-          console.log(result);
-          cb(null, result);
-      }
-  });
+    var dbo = dbClient.db(db);
+    dbo.collection(collection).find(query).sort(sortQuery).toArray(function (err, result) {
+        if (err) {
+            errorHandler.handleError('Error when retreving data from ' +
+                collection + 'in DB ' + db);
+            cb(err, null);
+        } else {
+            logger.debug(result);
+            cb(null, result);
+        }
+    });
 }
 
 /**
@@ -203,15 +198,15 @@ exports.sortDocuments = function (db, collection, query, sortQuery, cb) {
  * @param sortQuery
  * @param cb
  */
-exports.sortSpecificDocuments = function (db, collection, query,includeQuery, sortQuery, cb) {
+exports.sortSpecificDocuments = function (db, collection, query, includeQuery, sortQuery, cb) {
     var dbo = dbClient.db(db);
-    dbo.collection(collection).find(query,includeQuery).sort(sortQuery).toArray(function (err, result) {
-        if (err){
-            errorHandler.handleError('Error when retreving data from '+
-                collection +'in DB '+db);
-            cb(err,null);
+    dbo.collection(collection).find(query, includeQuery).sort(sortQuery).toArray(function (err, result) {
+        if (err) {
+            errorHandler.handleError('Error when retreving data from ' +
+                collection + 'in DB ' + db);
+            cb(err, null);
         } else {
-            console.log(result);
+            logger.debug(result);
             cb(null, result);
         }
     });
@@ -225,15 +220,15 @@ exports.sortSpecificDocuments = function (db, collection, query,includeQuery, so
  * @param query
  * @param cb
  */
-exports.deleteManyDocuments = function (db,collection,query,cb) {
+exports.deleteManyDocuments = function (db, collection, query, cb) {
     var dbo = dbClient.db(db);
-    dbo.collection(collection).deleteMany(query,function (err, obj) {
-        if (err){
-            errorHandler.handleError('Error when deleting data from '+
-                collection +'in DB '+db);
-            cb(err,null);
+    dbo.collection(collection).deleteMany(query, function (err, obj) {
+        if (err) {
+            errorHandler.handleError('Error when deleting data from ' +
+                collection + 'in DB ' + db);
+            cb(err, null);
         } else {
-            console.log(obj.result.n +" Documentes deleted")
+            logger.debug(obj.result.n + " Documentes deleted")
             cb(null, obj.result);
         }
     });
@@ -246,16 +241,13 @@ exports.deleteManyDocuments = function (db,collection,query,cb) {
  * @param query
  * @param cb
  */
-exports.deleteOneDocument = function (db,collection,query,cb) {
+exports.deleteOneDocument = function (db, collection, query, cb) {
     var dbo = dbClient.db(db);
-    dbo.collection(collection).deleteOne(query,function (err, obj) {
-        if (err){
-            errorHandler.handleError('Error when deleting data from '+
-                collection +'in DB '+db);
-            cb(err,null);
+    dbo.collection(collection).deleteOne(query, function (err, obj) {
+        if (err) {
+            cb(boom.badRequest("delete failed "+err), null);
         } else {
-            console.log(obj.result.n +" Document deleted")
-            cb(null, obj.result);
+            cb(null, obj);
         }
     });
 }
@@ -268,14 +260,14 @@ exports.deleteOneDocument = function (db,collection,query,cb) {
  */
 exports.dropCollection = function (db, collection, cb) {
     var dbo = dbClient.db(db);
-    dbo.collection(collection).drop(function(err, delOK) {
+    dbo.collection(collection).drop(function (err, delOK) {
         if (err) {
-            errorHandler.handleError('Error when deleting data from '+
-                collection +'in DB '+db);
-            cb(err,null);
+            errorHandler.handleError('Error when deleting data from ' +
+                collection + 'in DB ' + db);
+            cb(err, null);
         } else {
-           console.debug("Collection "+ collection+  " deleted");
-           cb(null,delOK);
+            logger.debug("Collection " + collection + " deleted");
+            cb(null, delOK);
         }
 
     });
@@ -291,16 +283,13 @@ exports.dropCollection = function (db, collection, cb) {
  * @param newValues
  * @param cb
  */
-exports.updateDocument = function (db,collection,query,newValues, cb) {
+exports.updateDocument = function (db, collection, query, newValues, cb) {
     var dbo = dbClient.db(db);
-    dbo.collection(collection).updateOne(query,newValues,function(err, updated) {
+    dbo.collection(collection).updateOne(query, newValues, function (err, updated) {
         if (err) {
-            errorHandler.handleError('Error when Updating document from '+
-                collection +'in DB '+db);
-            cb(err,null);
+            cb(boom.badRequest("Update failed "+err), null);
         } else {
-            console.log("Successfully updated");
-            cb(null,updated);
+            cb(null, updated);
         }
 
     });
@@ -315,16 +304,16 @@ exports.updateDocument = function (db,collection,query,newValues, cb) {
  * @param newValues
  * @param cb
  */
-exports.updateManyDocuments = function (db,collection,query,newValues, cb) {
+exports.updateManyDocuments = function (db, collection, query, newValues, cb) {
     var dbo = dbClient.db(db);
-    dbo.collection(collection).updateMany(query,newValues,function(err, updated) {
+    dbo.collection(collection).updateMany(query, newValues, function (err, updated) {
         if (err) {
-            errorHandler.handleError('Error when Updating document from '+
-                collection +'in DB '+db);
-            cb(err,null);
+            errorHandler.handleError('Error when Updating document from ' +
+                collection + 'in DB ' + db);
+            cb(err, null);
         } else {
-            console.log("Successfully updated");
-            cb(null,updated);
+            logger.debug("Successfully updated");
+            cb(null, updated);
         }
 
     });
@@ -338,14 +327,14 @@ exports.updateManyDocuments = function (db,collection,query,newValues, cb) {
  * @param query
  * @param cb
  */
-exports.aggregateCollections = function (db,collection,query, cb) {
+exports.aggregateCollections = function (db, collection, query, cb) {
     var dbo = dbClient.db(db);
-    dbo.collection(collection).aggregate([query]).toArray(function(err, result) {
+    dbo.collection(collection).aggregate([query]).toArray(function (err, result) {
         if (err) {
-            errorHandler.handleError('Error when aggregrating collectionsc'+ collection);
-            cb(err,null);
+            errorHandler.handleError('Error when aggregrating collectionsc' + collection);
+            cb(err, null);
         } else {
-            console.log(JSON.stringify(result));
+            logger.info(JSON.stringify(result));
 
         }
 
@@ -379,7 +368,11 @@ exports.createIndexes = function (indexes, collection, db, fn) {
     var db = dbClient.db(db);
     db.collection(collection, function (err, collection) {
         collection.createIndexes(indexes, function (err, result) {
-            fn(result);
+            if (err) {
+                fn( err,null);
+            } else {
+                fn(null, result);
+            }
         })
     });
 };

@@ -11,6 +11,8 @@ var userSchema = mongoose.Schema({
 },{timestamps: true});
 
 userSchema.index({createdAt: 1},{expireAfterSeconds: 86400});
+userSchema.index({user_id: 1});
+userSchema.index({user_id: 1,q_id:1});
 
 // generating a hash
 userSchema.methods.generateHash = function(password) {

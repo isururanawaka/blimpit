@@ -4,19 +4,40 @@ var FacebookStrategy = require('passport-facebook').Strategy;
 var TwitterStrategy  = require('passport-twitter').Strategy;
 var GoogleStrategy   = require('passport-google-oauth').OAuth2Strategy;
 
-// load up the user model
-var User       = require('../model/signinandsignup/user');
 var config = require('./config');
+var passportJWT = require('passport-jwt');
+const JWTStrategy   = passportJWT.Strategy;
+const extractJWT = passportJWT.ExtractJwt;
 
 // load the auth variables
 var configAuth = require('./auth'); // use this one for testing
 
-var privateUserSignUp = require('../routes/access/privateuser/signup');
-var userSignIn = require('../routes/access/commons');
-var retailer = require('../routes/access/retailer/signup');
+var signUp = require('../routes/identitymanagement/signup');
+var userSignIn = require('../routes/identitymanagement/signIn');
+
+exports.tokenCookieExtractor = function(req) {
+    var token = null;
+    if (req && req.cookies) token = req.cookies[config.jwt.token];
+    return token;
+};
+
+exports.refreshTokenCookieExtractor = function(req) {
+    var token = null;
+    if (req && req.cookies) token = req.cookies[config.jwt.refreshToken];
+    return token;
+};
+
+var jwtOptions = {}
+jwtOptions.jwtFromRequest = this.tokenCookieExtractor;
+jwtOptions.secretOrKey = config.jwt.jwtsecret;
+jwtOptions.passReqToCallback=true;
+
 
 exports.configureStrategies = function(passport , cb) {
 
+    /**
+     //
+     // Disable this for JWT
     // =========================================================================
     // passport session setup ==================================================
     // =========================================================================
@@ -35,12 +56,14 @@ exports.configureStrategies = function(passport , cb) {
         User.findById(id, function(err, user) {
             done(err, user);
         });
-    });
+    }); **/
+
+
 
     // =========================================================================
     // LOCAL LOGIN =============================================================
     // =========================================================================
-    console.log('Registering Local login strategy');
+    logger.debug('Registering Local login strategy');
     passport.use('local-login', new LocalStrategy({
         // by default, local strategy uses username and password, we will override with email
         usernameField : 'userId',
@@ -52,33 +75,42 @@ exports.configureStrategies = function(passport , cb) {
         }
     ));
 
+
     // =========================================================================
     // LOCAL SIGNUP ============================================================
     // =========================================================================
-    console.log('Registering  Local sign up strategy');
+    logger.debug('Registering  Local sign up strategy');
     passport.use('local-signup', new LocalStrategy({
         // by default, local strategy uses username and password, we will override with email
             usernameField:'userId',
         passwordField : 'password',
         passReqToCallback : true // allows us to pass in the req from our route (lets us check if a user is logged in or not)
     },function (req,userId,password,done) {
-        if(req.body.BType==config.business.private){
-            privateUserSignUp.localSignUp(req,userId,password,done);
+        if(req.body.BType==config.user.private){
+            signUp.localSignUp(req,userId,password,done);
         }else {
             retailer.localSignUp(req,userId,password,done);
         }
     }));
+
+    passport.use(config.jwt.strategy,new JWTStrategy(jwtOptions,function (req,jwtPayload,done) {
+
+    }));
+
+
+
 
     // =========================================================================
     // FACEBOOK ================================================================
     // =========================================================================
     var fbStrategy = configAuth.facebookAuth;
     fbStrategy.passReqToCallback = true;  // allows us to pass in the req from our route (lets us check if a user is logged in or not)
-    console.log('Registering  Facebook login strategy');
+    logger.debug('Registering  Facebook login strategy');
     passport.use(new FacebookStrategy(fbStrategy,
     function(req, token, refreshToken, profile, done) {
-        privateUserSignUp.fbSignUp(req,token,refreshToken,profile,done);
+        signUp.fbSignUp(req,token,refreshToken,profile,done);
     }));
+
 
 
 
@@ -164,7 +196,7 @@ exports.configureStrategies = function(passport , cb) {
     // =========================================================================
     // GOOGLE ==================================================================
     // =========================================================================
-    console.log('Registering  Google login strategy');
+    logger.debug('Registering  Google login strategy');
     passport.use(new GoogleStrategy({
 
         clientID        : configAuth.googleAuth.clientID,
@@ -174,7 +206,10 @@ exports.configureStrategies = function(passport , cb) {
 
     },
     function(req, token, refreshToken, profile, done) {
-   privateUserSignUp.googleSignUp(req,token,refreshToken,profile,done);
+   signUp.googleSignUp(req,token,refreshToken,profile,done);
     }));
 cb();
+
+
+
 };

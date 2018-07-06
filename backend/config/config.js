@@ -1,12 +1,18 @@
 var config = {};
 config.mongodb = {};
 config.blimpit ={};
-config.business={};
+
 config.user = {};
 
 config.email ={};
 
 config.nexmo={};
+
+config.redis={};
+
+config.jwt={};
+
+config.collections={};
 
 config.nexmo.apikey ='';
 config.nexmo.apisecret='';
@@ -28,12 +34,21 @@ config.user.passwordresetsubject = 'Reset Your Password',
 config.user.emailType = "email";
 config.user.phoneType ='phonenumber';
 
+config.jwt.jwtsecret="blimpItToken";
+config.jwt.jwtexpiration='30m';
+config.jwt.refreshtokeneptime=60*60*24;
+config.jwt.token="token";
+config.jwt.refreshToken="refreshToken";
+config.jwt.strategy="jwt";
+
+config.redis.host="localhost";
+config.redis.port=6379;
 
 config.email.user = "admin@blimpit.com";
 config.email.pass = "admin@2304";
 
-config.business.private = 'private';
-config.business.retailer = 'retailer';
+config.user.private = 'private';
+config.user.retailer = 'retailer';
 config.mongodb.collections = {};
 
 config.mongodb.host = 'localhost';
@@ -56,4 +71,4 @@ config.mongodb.maxRetries =6;
 config.mongodb.connectionTimeout = 5000;
 module.exports = config;
 
-
+config.collections.catmapper="categorymapper";
